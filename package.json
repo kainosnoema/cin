@@ -1,0 +1,29 @@
+{
+  "name": "cin",
+  "description": "Lightweight, flexible continuous integration server for Git projects",
+  "version": "0.0.1",
+  "author": "Evan Owen <kainosnoema@gmail.com>",
+  "contributors": [
+  ],
+  "dependencies": {
+    "express": "3.0.x",
+    "commander": "0.6.1",
+    "mkdirp": "0.3.x",
+    "rimraf": "2.0.x",
+    "async": "0.1.x",
+    "debug": "*"
+  },
+  "devDependencies": {
+    "mocha": "*"
+  },
+  "publishConfig": {},
+  "keywords": ["cin", "integrity", "continuous", "integration", "testing", "ci", "server"],
+  "repository": "git://github.com/kainosnoema/cin",
+  "main": "index",
+  "bin": { "cin": "./bin/cin" },
+  "scripts": {
+    "prepublish" : "npm prune",
+    "test": "make test"
+  },
+  "engines": { "node": "*" }
+}

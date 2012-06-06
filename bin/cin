@@ -1,0 +1,199 @@
+#!/usr/bin/env node
+
+/**
+ * Module dependencies.
+ */
+
+var Cin = require('../lib/cin')
+  , Project = require('../lib/project')
+  , pkg = require('../package.json')
+  , program = require('commander')
+  , helper = require('../lib/helper')
+  , path = require('path');
+
+/**
+ * Define cli program.
+ */
+
+program
+  .version(pkg.version)
+  .option('-p --path [path]', 'set the working path for given command')
+  .on('path', function(workingPath) {
+    process.chdir(path.dirname(path.resolve(workingPath)));
+  });
+
+program
+  .command('install [path]')
+  .description('Install Cin server at the given path ')
+  .action(function(installDir, options){
+    var cin = new Cin({ workingPath: path.resolve(installDir || '.') });
+
+    if (cin.installed()) {
+      abort('Cin already installed. For help, try `cin --help`.');
+    }
+
+    cin.install();
+  });
+
+program
+  .command('add <project>')
+  .description('Add a git project from the given Github project name or url')
+  .option('-a, --alias [string]', 'An alias that can be used to refer to the project')
+  .option('-r, --repository [url]', 'Custom remote repository URL for project')
+  .option('-c, --command [shell]', 'Shell command string for setting up and running project')
+  .action(function(project, options) {
+    var cin = new Cin();
+
+    try {
+      var opts = helper.slice(options, ['alias', 'repository', 'command']);
+      project = cin.add(project, opts);
+    } catch(err) {
+      abort(err.message);
+    }
+  });
+
+program
+  .command('remove <project>')
+  .description('Remove the given project')
+  .action(function(project, options) {
+    var cin = new Cin();
+
+    try {
+      project = cin.project(project);
+    } catch(err) {
+      abort(err.message);
+    }
+
+    if (!project.exists()) {
+      abort('Project "' + project.name + '" doesn\'t exist.')
+    }
+
+    program.confirm('Really remove ' + project.name + '? (yes or no)', function(really) {
+      process.stdin.destroy();
+      if (!really) { return; }
+
+      try {
+        cin.remove(project);
+      } catch(err) {
+        abort(err.message);
+      }
+    }, true);
+  });
+
+program
+  .command('list')
+  .description('List all available projects')
+  .action(function(options){
+    var cin = new Cin();
+
+    cin.projects.forEach(function(project) {
+      console.log(project.name, ' -> ', project.config.repository);
+    });
+  });
+
+program
+  .command('show <project>')
+  .description('Show the configuration of a given project')
+  .action(function(project, options) {
+    var cin = new Cin();
+
+    try {
+      project = cin.project(project);
+    } catch(err) {
+      abort(err.message);
+    }
+
+    console.log(JSON.stringify(project.config, null, 4));
+  });
+
+program
+  .command('config <project.setting> <value>')
+  .description('Set the given configuration setting for the given project to value given')
+  .action(function(setting, value, options){
+    var cin = new Cin();
+
+    var path = setting.split('.')
+      , project = path.shift()
+      , config = helper.pathSet({}, path, value);
+
+    helper.log(JSON.stringify(config), 'config');
+
+    try {
+      cin.project(project).config = config;
+    } catch(err) {
+      abort(err.message);
+    }
+  });
+
+program
+  .command('build <project[@branch]>')
+  .description('Build the given project (at branch if given)')
+  .action(function(project, options){
+    var cin = new Cin();
+
+    try {
+      var build = cin.build(project);
+      build.run(function(err, status) {
+        if(err) { abort(err); }
+        var symbol = status.success ? '\u2713' : '\u2717';
+        helper.log(JSON.stringify(status), symbol);
+      });
+    } catch(err) {
+      abort(err.message);
+    }
+  });
+
+program
+  .command('status [project[@branch]]')
+  .description('Show the build status of all projects, or just the given project (at branch if given)')
+  .action(function(project, options) {
+    var cin = new Cin();
+
+    var branch;
+    if (project) {
+      branch = project.split('@')[1];
+      project = project.split('@')[0];
+    }
+
+    try {
+      var projects = project ? [cin.project(project)] :  cin.projects;
+      projects.forEach(function(project) {
+        var build = project.build(branch)
+          , status = build.status
+          , symbol = status.success ? '\u2713' : '\u2717';
+        helper.log(build.name + ' -> ' + JSON.stringify(status), symbol);
+      });
+    } catch(err) {
+      abort(err.message);
+    }
+  });
+
+program
+  .command('server')
+  .description('Start the server')
+  .option('-p, --port [number]', 'Start at the given port', '8080')
+  .action(function(options) {
+    var cin = new Cin();
+
+    helper.log('not implemented');
+  });
+
+/**
+ * Parse argv using defined program commands.
+ */
+
+program.parse(process.argv);
+
+if (!program.args.length) {
+  console.log(program.helpInformation());
+}
+
+/**
+ * Log given error `str` and exit.
+ *
+ */
+
+function abort(str) {
+  helper.log(str, 'error');
+  process.exit(1);
+}
