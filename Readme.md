@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/kainosnoema/cin.png)](http://travis-ci.org/kainosnoema/cin)
 # Cin
 
 Lightweight, flexible continuous integration server for Git projects, built on [node](http://nodejs.org).
